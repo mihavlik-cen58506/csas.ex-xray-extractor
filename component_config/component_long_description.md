@@ -1,0 +1,1 @@
+Component for getting value of JQL call to Xray API
