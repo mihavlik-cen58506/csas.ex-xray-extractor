@@ -1,10 +1,10 @@
 name: Keboola Component Build & Deploy Pipeline
-on: [ push ]
+on: [push]
 concurrency: ci-${{ github.ref }} # to avoid tag collisions in the ECR
 env:
   # repository variables:
-  KBC_DEVELOPERPORTAL_APP: "keboola.ex-service-name" # replace with your component id
-  KBC_DEVELOPERPORTAL_VENDOR: "keboola" # replace with your vendor
+  KBC_DEVELOPERPORTAL_APP: ${{ vars.KBC_DEVELOPERPORTAL_APP }} # replace with your component id
+  KBC_DEVELOPERPORTAL_VENDOR: ${{ vars.KBC_DEVELOPERPORTAL_VENDOR }} # replace with your vendor
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   KBC_DEVELOPERPORTAL_USERNAME: ${{ vars.KBC_DEVELOPERPORTAL_USERNAME }}
 
@@ -13,7 +13,7 @@ env:
   KBC_DEVELOPERPORTAL_PASSWORD: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
 
   # (Optional) Test KBC project: https://connection.keboola.com/admin/projects/0000
-  KBC_TEST_PROJECT_CONFIGS: "" # space separated list of config ids
+  KBC_TEST_PROJECT_CONFIGS: '' # space separated list of config ids
   KBC_STORAGE_TOKEN: ${{ secrets.KBC_STORAGE_TOKEN }} # required for running KBC tests
 
 jobs:
