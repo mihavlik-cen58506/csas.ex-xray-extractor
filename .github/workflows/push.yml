@@ -40,7 +40,7 @@ jobs:
             echo "branch_name=$branch_name" | tee -a $GITHUB_OUTPUT
           else
             raw=$(git branch -r --contains ${{ github.ref }})
-            branch="$(echo ${raw//origin\//} | tr -d '\n')"
+            branch="$(echo $raw | sed "s/.*origin\///" | tr -d '\n')"
             echo "branch_name=$branch" | tee -a $GITHUB_OUTPUT
           fi
 
@@ -49,9 +49,9 @@ jobs:
         run: |
           echo "default_branch='${{ github.event.repository.default_branch }}'"
           if [ "${{ github.event.repository.default_branch }}" = "${{ steps.current_branch.outputs.branch_name }}" ]; then
-             echo "is_default_branch=true" | tee -a $GITHUB_OUTPUT
+            echo "is_default_branch=true" | tee -a $GITHUB_OUTPUT
           else
-             echo "is_default_branch=false" | tee -a $GITHUB_OUTPUT
+            echo "is_default_branch=false" | tee -a $GITHUB_OUTPUT
           fi
 
       - name: Set image tag
