@@ -1,19 +1,53 @@
 {
   "type": "object",
-  "title": "extractor configuration",
+  "title": "Xray JQL Extractor Parameters",
+  "description": "Configuration parameters for the Xray JQL Extractor component.",
   "required": [
-    "print_hello"
+    "#xray_client_id",
+    "#xray_client_secret",
+    "jql_input_column",
+    "result_output_column"
   ],
   "properties": {
-    "print_hello": {
+    "#xray_client_id": {
+      "type": "string",
+      "title": "Xray Client ID:",
+      "description": "Your Xray Cloud Client ID for API authentication. Obtain this from Xray Cloud security settings.",
+      "format": "password",
+      "propertyOrder": 10
+    },
+    "#xray_client_secret": {
+      "type": "string",
+      "title": "Xray Client Secret:",
+      "description": "Your Xray Cloud Client Secret for API authentication. Obtain this from Xray Cloud security settings.",
+      "format": "password",
+      "propertyOrder": 20
+    },
+    "jql_input_column": {
+      "type": "string",
+      "title": "JQL Input Column Name:",
+      "description": "The exact name of the column in the input table that contains JQL queries.",
+      "propertyOrder": 30
+    },
+    "result_output_column": {
+      "type": "string",
+      "title": "Output Result Column Name:",
+      "description": "The name for the new column that will be added to the output table to store the Xray API result (e.g., JSON response or parsed value).",
+      "propertyOrder": 40
+    },
+    "incremental": {
       "type": "boolean",
-      "title": "Print Hello",
-      "propertyOrder": 1
+      "title": "Incremental Load Enabled:",
+      "description": "If true, output data will be loaded incrementally. Set to false for full table replace (recommended for updating existing rows).",
+      "default": false,
+      "propertyOrder": 980
     },
     "debug": {
       "type": "boolean",
-      "title": "Debug",
-      "propertyOrder": 2
+      "title": "Enable Debug Logging:",
+      "description": "If true, enables verbose debug logging in the job output.",
+      "default": false,
+      "propertyOrder": 1000
     }
   }
 }
