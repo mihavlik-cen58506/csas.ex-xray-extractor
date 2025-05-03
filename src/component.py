@@ -90,8 +90,8 @@ class Component(ComponentBase):
                 # Verify required JQL input column exists in CSV header
                 if params.jql_input_column not in reader.fieldnames:
                     raise UserException(
-                        f"Input table '{input_table_def.name}' is missing the required JQL column: '{params.jql_input_column}'. "
-                        f"Available columns: {list(reader.fieldnames)}"
+                        f"Input table '{input_table_def.name}' is missing the required JQL column: "
+                        f"'{params.jql_input_column}'. Available columns: {list(reader.fieldnames)}"
                     )
 
                 logging.info(
