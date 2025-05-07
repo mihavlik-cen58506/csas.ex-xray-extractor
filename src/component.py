@@ -105,8 +105,9 @@ class Component(ComponentBase):
                 # Verify required JQL input column exists in CSV header
                 if params.jql_input_column not in reader.fieldnames:
                     raise UserException(
-                        f"Input table '{input_table_def.name}' is missing the required JQL column: '{params.jql_input_column}'. "
-                        f"Available columns: {list(reader.fieldnames)}"
+                        f"Input table '{input_table_def.name}' is missing the required "
+                        f"JQL column: '{params.jql_input_column}'. Available columns: "  # Rozdělen dlouhý řetězec
+                        f"{list(reader.fieldnames)}"
                     )
 
                 logging.info(
@@ -121,7 +122,8 @@ class Component(ComponentBase):
                     output_fieldnames.append(params.result_output_column)
                 else:
                     logging.warning(
-                        f"Output column name '{params.result_output_column}' already exists in input. It will be overwritten."
+                        f"Output column name '{params.result_output_column}' already "
+                        "exists in input. It will be overwritten."  # Rozdělen dlouhý řetězec
                     )
 
                 # Iterate through rows, call API, and collect results
@@ -138,7 +140,8 @@ class Component(ComponentBase):
                     # Skip row if JQL column is empty
                     if not jql_query:
                         logging.warning(
-                            f"Row {row_count}: JQL column '{params.jql_input_column}' is empty. Skipping API call for this row."
+                            f"Row {row_count}: JQL column '{params.jql_input_column}' "
+                            "is empty. Querying using only Project ID and Folder Path."  # Rozdělen dlouhý řetězec
                         )
                         # Add an empty value for the result column and keep the row
                         row[params.result_output_column] = ""
@@ -156,7 +159,8 @@ class Component(ComponentBase):
                             jql_query=jql_query,
                         )
                         logging.debug(
-                            f"Row {row_count}: API call successful. Result data structure: {list(api_result.keys()) if api_result else 'Empty'}"
+                            f"Row {row_count}: API call successful. Result data structure: "
+                            f"{list(api_result.keys()) if api_result else 'Empty'}"  # Rozdělen dlouhý řetězec
                         )
 
                         # ####### Process API Result and Add to Row #######
@@ -165,12 +169,15 @@ class Component(ComponentBase):
                         # Add the result to the current row dictionary under the specified output column name
                         row[params.result_output_column] = result_json_string
                         logging.debug(
-                            f"Row {row_count}: Added API result to column '{params.result_output_column}'."
+                            f"Row {row_count}: Added API result to column "
+                            f"'{params.result_output_column}'."  # Rozdělen dlouhý řetězec
                         )
 
                     except Exception as api_exc:
                         logging.error(
-                            f"Row {row_count}: Error calling Xray API for Project ID '{params.project_id}', Folder Path '{params.folder_path}', JQL '{jql_query}': {api_exc}"
+                            f"Row {row_count}: Error calling Xray API for Project ID "
+                            f"'{params.project_id}', Folder Path '{params.folder_path}', "  # Rozdělen dlouhý řetězec
+                            f"JQL '{jql_query}': {api_exc}"
                         )
                         # API errors per row:
                         row[params.result_output_column] = (
