@@ -11,6 +11,8 @@ class Configuration(BaseModel):
     xray_client_secret: str = Field(alias="#xray_client_secret")
     jql_input_column: str
     result_output_column: str
+    project_id: str
+    folder_path: str
 
     def __init__(self, **data):
         try:
@@ -20,5 +22,4 @@ class Configuration(BaseModel):
             raise UserException(f"Validation Error: {', '.join(error_messages)}")
 
         if self.debug:
-            logging.debug("Component will run in Debug mode")
             logging.debug("Component will run in Debug mode")
