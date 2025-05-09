@@ -28,7 +28,7 @@ class Component(ComponentBase):
         """
         logging.info("Component starting.")
 
-        # Load and validate configuration parameters using Pydantic model
+        # Load and validate configuration parameters
         try:
             logging.info("Loading and validating configuration parameters...")
             params = Configuration(**self.configuration.parameters)
@@ -106,7 +106,7 @@ class Component(ComponentBase):
                 if params.jql_input_column not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
-                        f"JQL column: '{params.jql_input_column}'. Available columns: "  # Rozdělen dlouhý řetězec
+                        f"JQL column: '{params.jql_input_column}'. Available columns: "
                         f"{list(reader.fieldnames)}"
                     )
 
@@ -123,7 +123,7 @@ class Component(ComponentBase):
                 else:
                     logging.warning(
                         f"Output column name '{params.result_output_column}' already "
-                        "exists in input. It will be overwritten."  # Rozdělen dlouhý řetězec
+                        "exists in input. It will be overwritten."
                     )
 
                 # Iterate through rows, call API, and collect results
@@ -141,7 +141,7 @@ class Component(ComponentBase):
                     if not jql_query:
                         logging.warning(
                             f"Row {row_count}: JQL column '{params.jql_input_column}' "
-                            "is empty. Querying using only Project ID and Folder Path."  # Rozdělen dlouhý řetězec
+                            "is empty. Querying using only Project ID and Folder Path."
                         )
                         # Add an empty value for the result column and keep the row
                         row[params.result_output_column] = ""
@@ -160,7 +160,7 @@ class Component(ComponentBase):
                         )
                         logging.debug(
                             f"Row {row_count}: API call successful. Result data structure: "
-                            f"{list(api_result.keys()) if api_result else 'Empty'}"  # Rozdělen dlouhý řetězec
+                            f"{list(api_result.keys()) if api_result else 'Empty'}"
                         )
 
                         # ####### Process API Result and Add to Row #######
@@ -170,13 +170,13 @@ class Component(ComponentBase):
                         row[params.result_output_column] = result_json_string
                         logging.debug(
                             f"Row {row_count}: Added API result to column "
-                            f"'{params.result_output_column}'."  # Rozdělen dlouhý řetězec
+                            f"'{params.result_output_column}'."
                         )
 
                     except Exception as api_exc:
                         logging.error(
                             f"Row {row_count}: Error calling Xray API for Project ID "
-                            f"'{params.project_id}', Folder Path '{params.folder_path}', "  # Rozdělen dlouhý řetězec
+                            f"'{params.project_id}', Folder Path '{params.folder_path}', "
                             f"JQL '{jql_query}': {api_exc}"
                         )
                         # API errors per row:

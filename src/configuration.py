@@ -9,10 +9,10 @@ class Configuration(BaseModel):
     incremental: bool = False
     xray_client_id: str = Field(alias="#xray_client_id")
     xray_client_secret: str = Field(alias="#xray_client_secret")
-    jql_input_column: str
-    result_output_column: str
-    project_id: str
-    folder_path: str
+    jql_input_column: str = Field()
+    result_output_column: str = Field()
+    project_id: str = Field()
+    folder_path: str = Field()
 
     def __init__(self, **data):
         try:

@@ -6,7 +6,9 @@
     "#xray_client_id",
     "#xray_client_secret",
     "jql_input_column",
-    "result_output_column"
+    "result_output_column",
+    "project_id",
+    "folder_path"
   ],
   "properties": {
     "#xray_client_id": {
@@ -34,6 +36,18 @@
       "title": "Output Result Column Name:",
       "description": "The name for the new column that will be added to the output table to store the Xray API result (e.g., JSON response or parsed value).",
       "propertyOrder": 40
+    },
+    "project_id": {
+      "type": "string",
+      "title": "Xray Project ID:",
+      "description": "The ID of the Jira/Xray project from which to extract tests.",
+      "propertyOrder": 50
+    },
+    "folder_path": {
+      "type": "string",
+      "title": "Xray Folder Path:",
+      "description": "The path to the folder in Xray containing the tests (e.g., '/My Folder/Subfolder'). Extraction will be limited to this folder and its descendants (if applicable in API call).",
+      "propertyOrder": 60
     },
     "incremental": {
       "type": "boolean",
