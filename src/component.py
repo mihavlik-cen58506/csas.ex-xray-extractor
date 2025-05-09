@@ -18,13 +18,11 @@ class Component(ComponentBase):
     """
 
     def __init__(self):
-        # Initialize base component interface
         super().__init__()
 
     def run(self):
         """
         Main execution method.
-        Loads config, reads input table, logs data info.
         """
         logging.info("Component starting.")
 
@@ -34,12 +32,10 @@ class Component(ComponentBase):
             params = Configuration(**self.configuration.parameters)
             logging.info("Configuration parameters loaded and validated.")
 
-            # Set debug logging level if enabled in config
             if params.debug:
                 logging.getLogger().setLevel(logging.DEBUG)
                 logging.debug("Debug mode enabled.")
 
-            # Log all loaded parameters (sensitive ones at DEBUG level)
             logging.info("--- Loaded Parameters ---")
             logging.info(f"Debug: {params.debug}")
             logging.info(f"Incremental: {params.incremental}")
@@ -47,7 +43,6 @@ class Component(ComponentBase):
             logging.info(f"Result Output Column: {params.result_output_column}")
             logging.info(f"Project ID: {params.project_id}")
             logging.info(f"Folder Path: {params.folder_path}")
-            # Log sensitive parameters only in debug mode and partially
             logging.debug(
                 f"Xray Client ID (last 5 chars): ...{params.xray_client_id[-5:]}"
             )
@@ -58,10 +53,15 @@ class Component(ComponentBase):
 
         except UserException as e:
             logging.error(f"Configuration error: {e}")
-            raise  # Re-raise to fail job with exit code 1
+            raise
+        except Exception as e:
+            logging.error(
+                f"An unexpected error occurred during configuration loading: {e}"
+            )
+            raise UserException(f"Unexpected error during configuration: {e}")
 
         #
-        # Create an instance of our XrayApiClient, passing credentials from config.
+        # Initialize Xray API client
         try:
             logging.info("Initializing Xray API client and authenticating...")
             xray_client = XrayApiClient(
@@ -79,30 +79,30 @@ class Component(ComponentBase):
 
         if not input_tables:
             raise UserException(
-                "No input tables found. Please map at least one input table."
+                "No input tables found. Please map exactly one input table."
             )
 
         if len(input_tables) > 1:
             logging.warning(
-                f"More than one input table mapped ({len(input_tables)}). Processing the first one."
+                f"More than one input table mapped ({len(input_tables)}). "
+                "Processing the first one."
             )
 
-        # Get the definition of the first input table
         input_table_def = input_tables[0]
         logging.info(
-            f"Processing input table: {input_table_def.name} (file: {input_table_def.full_path})"
+            f"Processing input table: {input_table_def.name} "
+            f"(file: {input_table_def.full_path})"
         )
 
         # ####### Read data, call API, and prepare output #######
         input_csv_path = input_table_def.full_path
-        processed_rows = []  # List to store rows after adding API results
+        processed_rows = []
         row_count = 0
 
         try:
             with open(input_csv_path, mode="r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
 
-                # Verify required JQL input column exists in CSV header
                 if params.jql_input_column not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
@@ -111,13 +111,11 @@ class Component(ComponentBase):
                     )
 
                 logging.info(
-                    f"Input CSV header read. Required JQL column '{params.jql_input_column}' found."
+                    "Input CSV header read. "
+                    f"Required JQL column '{params.jql_input_column}' found."
                 )
 
-                # Prepare fieldnames for the output CSV.
-                # Start with original columns and add the new result column.
                 output_fieldnames = list(reader.fieldnames)
-                # Add the new output column name if it's not already present
                 if params.result_output_column not in output_fieldnames:
                     output_fieldnames.append(params.result_output_column)
                 else:
@@ -126,38 +124,29 @@ class Component(ComponentBase):
                         "exists in input. It will be overwritten."
                     )
 
-                # Iterate through rows, call API, and collect results
                 logging.info("Processing rows and calling Xray API...")
                 for row in reader:
                     row_count += 1
                     logging.debug(f"Processing row {row_count}.")
 
-                    # Get the JQL query from the specified column
-                    jql_query = row.get(
-                        params.jql_input_column, ""
-                    ).strip()  # Get value and remove leading/trailing whitespace
+                    jql_query = row.get(params.jql_input_column, "").strip()
 
-                    # Skip row if JQL column is empty
                     if not jql_query:
-                        logging.warning(
+                        logging.debug(
                             f"Row {row_count}: JQL column '{params.jql_input_column}' "
                             "is empty. Querying using only Project ID and Folder Path."
                         )
-                        # Add an empty value for the result column and keep the row
-                        row[params.result_output_column] = ""
-                        processed_rows.append(row)
-                        continue  # Move to the next row
+                    else:
+                        logging.debug(f"Row {row_count}: JQL query: '{jql_query}'")
 
-                    logging.debug(f"Row {row_count}: JQL query: '{jql_query}'")
-
-                    # ####### Call Xray API for the JQL query #######
+                    # ####### Call Xray API #######
                     try:
-                        # Call the query_tests_by_jql method of our XrayApiClient
                         api_result = xray_client.query_tests_by_folder_and_jql(
                             project_id=params.project_id,
                             folder_path=params.folder_path,
                             jql_query=jql_query,
                         )
+
                         logging.debug(
                             f"Row {row_count}: API call successful. Result data structure: "
                             f"{list(api_result.keys()) if api_result else 'Empty'}"
@@ -166,7 +155,6 @@ class Component(ComponentBase):
                         # ####### Process API Result and Add to Row #######
                         result_json_string = json.dumps(api_result)
 
-                        # Add the result to the current row dictionary under the specified output column name
                         row[params.result_output_column] = result_json_string
                         logging.debug(
                             f"Row {row_count}: Added API result to column "
@@ -179,19 +167,17 @@ class Component(ComponentBase):
                             f"'{params.project_id}', Folder Path '{params.folder_path}', "
                             f"JQL '{jql_query}': {api_exc}"
                         )
-                        # API errors per row:
-                        row[params.result_output_column] = (
-                            f"API_ERROR: {api_exc}"  # Store error message
-                        )
+                        row[params.result_output_column] = f"API_ERROR: {api_exc}"
                         logging.warning(
-                            f"Row {row_count}: API call failed. Storing error message in result column."
+                            f"Row {row_count}: API call failed. "
+                            "Storing error message in result column."
                         )
 
-                    # Add the modified row to our list of processed rows
                     processed_rows.append(row)
 
                 logging.info(
-                    f"Finished processing {row_count} rows. Collected {len(processed_rows)} rows for output."
+                    f"Finished processing {row_count} rows. "
+                    f"Collected {len(processed_rows)} rows for output."
                 )
 
         except FileNotFoundError:
@@ -201,57 +187,85 @@ class Component(ComponentBase):
             )
         except Exception as e:
             logging.error(f"Error reading or processing input CSV: {e}")
-            raise  # Re-raise unexpected errors
+            raise UserException(f"Error processing input data or calling API: {e}")
 
         # ####### Write Output Table #######
-        output_tables = self.get_output_tables_definitions()
-        if not output_tables:
+        # Get output table definition using create_out_table_definition
+        logging.info("Creating output table definition...")
+
+        output_tables_config = self.configuration.output.tables
+        if not output_tables_config:
             raise UserException(
                 "No output tables defined. Please map at least one output table."
             )
-        if len(output_tables) > 1:
+        if len(output_tables_config) > 1:
             logging.warning(
-                f"More than one output table defined ({len(output_tables)}). Writing to the first one."
+                f"More than one output table defined ({len(output_tables_config)}). "
+                "Using the first one for output."
             )
 
-        output_table_def = output_tables[0]
-        logging.info(
-            f"Writing output to table: {output_table_def.name} (file: {output_table_def.full_path})"
-        )
+        first_output_table_config = output_tables_config[0]
 
-        # 1. Set the output table definition
-        output_table_def.columns = output_fieldnames
+        output_table_destination_name = first_output_table_config.get("destination")
+        if not output_table_destination_name:
+            raise UserException("Output table mapping is missing 'destination' name.")
 
-        # 2. Write the processed data to the output CSV file
-        output_csv_path = output_table_def.full_path
-        logging.info(
-            f"Writing {len(processed_rows)} rows to output CSV file: {output_csv_path}"
-        )
+        primary_key_config = first_output_table_config.get("primary_key")
 
         try:
+            # Create the TableDefinition object
+            output_table_def = self.create_out_table_definition(
+                name=output_table_destination_name,
+                schema=output_fieldnames,
+                destination=output_table_destination_name,
+                primary_key=primary_key_config,
+            )
+
+            if params.incremental:
+                if not output_table_def.primary_key and not primary_key_config:
+                    raise UserException(
+                        "Incremental loading requested but no primary key "
+                        "is defined in the output table mapping."
+                    )
+                output_table_def.incremental = True
+                logging.debug("Incremental loading enabled for output manifest.")
+
+            logging.info(
+                f"Writing output to table: {output_table_def.name} "
+                f"(file: {output_table_def.full_path})"
+            )
+
+            # 2. Write the processed data to the output CSV file
+            output_csv_path = output_table_def.full_path
+            logging.info(
+                f"Writing {len(processed_rows)} rows to output CSV file: "
+                f"{output_csv_path}"
+            )
+
             with open(
                 output_csv_path, mode="wt", encoding="utf-8", newline=""
             ) as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=output_fieldnames)
 
-                # Write the header row
                 writer.writeheader()
-
-                # Write the data rows
                 writer.writerows(processed_rows)
 
             logging.info("Output CSV file written successfully.")
 
             # 3. Write the manifest file for the output table
             logging.info(
-                f"Writing manifest file for output table: {output_table_def.full_path}.manifest"
+                "Writing manifest file for output table: "
+                f"{output_table_def.full_path}.manifest"
             )
             self.write_manifest(output_table_def)
             logging.info("Manifest file written successfully.")
 
         except Exception as e:
-            logging.error(f"Error writing output CSV or manifest: {e}")
-            raise  # Re-raise the exception
+            logging.error(
+                f"Error creating output table definition, "
+                f"writing CSV or manifest: {e}"
+            )
+            raise UserException(f"Error writing output data: {e}")
 
         logging.info("Component finished.")
 
