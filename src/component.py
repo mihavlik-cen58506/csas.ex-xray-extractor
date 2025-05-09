@@ -206,11 +206,15 @@ class Component(ComponentBase):
 
         first_output_table_config = output_tables_config[0]
 
-        output_table_destination_name = first_output_table_config.get("destination")
-        if not output_table_destination_name:
-            raise UserException("Output table mapping is missing 'destination' name.")
+        try:
+            output_table_destination_name = first_output_table_config.destination
+            primary_key_config = getattr(first_output_table_config, "primary_key", None)
 
-        primary_key_config = first_output_table_config.get("primary_key")
+        except AttributeError as e:
+            raise UserException(
+                f"Failed to access output mapping attributes (e.g., .destination, .primary_key): {e}. "
+                "Ensure the output mapping is correctly defined and the library version is compatible."
+            )
 
         try:
             # Create the TableDefinition object
