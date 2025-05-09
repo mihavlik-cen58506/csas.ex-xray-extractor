@@ -207,6 +207,7 @@ class Component(ComponentBase):
         first_output_table_config = output_tables_config[0]
 
         try:
+            output_table_source_name = first_output_table_config.source
             output_table_destination_name = first_output_table_config.destination
             primary_key_config = getattr(first_output_table_config, "primary_key", None)
 
@@ -219,14 +220,14 @@ class Component(ComponentBase):
         try:
             # Create the TableDefinition object
             output_table_def = self.create_out_table_definition(
-                name=output_table_destination_name,
+                name=output_table_source_name,
                 schema=output_fieldnames,
                 destination=output_table_destination_name,
                 primary_key=primary_key_config,
             )
 
             if params.incremental:
-                if not output_table_def.primary_key and not primary_key_config:
+                if not output_table_def.primary_key:
                     raise UserException(
                         "Incremental loading requested but no primary key "
                         "is defined in the output table mapping."
