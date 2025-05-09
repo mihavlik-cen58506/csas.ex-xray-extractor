@@ -193,7 +193,7 @@ class Component(ComponentBase):
         # Get output table definition using create_out_table_definition
         logging.info("Creating output table definition...")
 
-        output_tables_config = self.configuration.output.tables
+        output_tables_config = self.configuration.tables_output_mapping
         if not output_tables_config:
             raise UserException(
                 "No output tables defined. Please map at least one output table."
