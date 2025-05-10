@@ -224,6 +224,7 @@ class Component(ComponentBase):
                 schema=output_fieldnames,
                 destination=output_table_destination_name,
                 primary_key=primary_key_config,
+                has_header=True,
             )
 
             if params.incremental:
