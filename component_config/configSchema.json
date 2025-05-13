@@ -49,6 +49,20 @@
       "description": "The path to the folder in Xray containing the tests (e.g., '/My Folder/Subfolder'). Extraction will be limited to this folder and its descendants (if applicable in API call).",
       "propertyOrder": 60
     },
+    "proxy_address": {
+      "type": "string",
+      "title": "Proxy Server Address:",
+      "description": "Address of the proxy server. If not specified, the corporate default (10.254.0.12) will be used.",
+      "default": "10.254.0.12",
+      "propertyOrder": 70
+    },
+    "proxy_port": {
+      "type": "integer",
+      "title": "Proxy Server Port:",
+      "description": "Port of the proxy server. If not specified, the corporate default (8080) will be used.",
+      "default": 8080,
+      "propertyOrder": 80
+    },
     "incremental": {
       "type": "boolean",
       "title": "Incremental Load Enabled:",

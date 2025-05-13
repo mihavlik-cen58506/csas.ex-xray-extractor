@@ -49,6 +49,12 @@ class Component(ComponentBase):
             logging.debug(
                 f"Xray Client Secret (last 5 chars): ...{params.xray_client_secret[-5:]}"
             )
+            # Log proxy settings if provided
+            if params.proxy_address:
+                logging.info(f"Proxy Address: {params.proxy_address}")
+                logging.info(f"Proxy Port: {params.proxy_port}")
+            else:
+                logging.info("No proxy configured in parameters.")
             logging.info("-------------------------")
 
         except UserException as e:
@@ -65,7 +71,11 @@ class Component(ComponentBase):
         try:
             logging.info("Initializing Xray API client and authenticating...")
             xray_client = XrayApiClient(
-                client_id=params.xray_client_id, client_secret=params.xray_client_secret
+                client_id=params.xray_client_id,
+                client_secret=params.xray_client_secret,
+                # Pass proxy parameters to the API client
+                proxy_address=params.proxy_address,
+                proxy_port=params.proxy_port,
             )
             logging.info("Xray API client initialized and authenticated.")
         except Exception as e:

@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional  # Import Optional for type hinting
 
 import requests
 
@@ -16,25 +17,58 @@ class XrayApiClient:
     """
     Client for interacting with the Xray Cloud API.
     Handles authentication and GraphQL queries.
+    Now includes support for using a proxy server.
     """
 
-    def __init__(self, client_id: str, client_secret: str):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        proxy_address: Optional[str] = None,
+        proxy_port: Optional[int] = None,
+    ):
         """
         Initializes the Xray API client and authenticates to get a Bearer token.
 
         Args:
             client_id: The Xray Cloud Client ID.
             client_secret: The Xray Cloud Client Secret.
+            proxy_address: Optional proxy server address.
+            proxy_port: Optional proxy server port.
         """
         self._client_id = client_id
         self._client_secret = client_secret
         self._bearer_token = None
+
+        # Store proxy configuration
+        self._proxy_address = proxy_address
+        self._proxy_port = proxy_port
+        self._proxies = self._build_proxy_dict()
+
         self._authenticate()
+
+    def _build_proxy_dict(self) -> Optional[dict]:
+        """
+        Builds the dictionary format required by the 'requests' library for proxies.
+        Returns None if no proxy configuration is provided.
+        """
+        if self._proxy_address and self._proxy_port:
+            proxy_url = f"http://{self._proxy_address}:{self._proxy_port}"
+            logging.info(f"Using proxy: {proxy_url}")
+            # Configure proxies for both http and https
+            return {
+                "http": proxy_url,
+                "https": proxy_url,
+            }
+        else:
+            logging.info("No proxy configured.")
+            return None
 
     def _authenticate(self):
         """
         Authenticates with the Xray Cloud API to obtain a Bearer token.
         Retries on specific temporary errors.
+        Uses the configured proxy if available.
         """
         logging.info("Authenticating with Xray Cloud API...")
 
@@ -54,6 +88,7 @@ class XrayApiClient:
                     json=auth_payload,
                     headers={"content-type": "application/json"},
                     timeout=60,
+                    proxies=self._proxies,
                 )
 
                 # Check for retryable status codes
@@ -98,6 +133,7 @@ class XrayApiClient:
         """
         Executes a GraphQL query to get tests based on Project ID, Folder Path,
         and optionally JQL string.
+        Uses the configured proxy if available.
 
         Args:
             project_id: The Xray/Jira Project ID.
@@ -113,6 +149,7 @@ class XrayApiClient:
         """
 
         if not self._bearer_token:
+            # Re-authenticate if token is missing (shouldn't happen after __init__ but as a safeguard)
             self._authenticate()
 
         logging.debug(f"Executing GraphQL query for JQL: '{jql_query}'")
@@ -176,6 +213,7 @@ class XrayApiClient:
                 json=request_payload,
                 headers=headers,
                 timeout=60,
+                proxies=self._proxies,  # Pass the proxies dictionary here
             )
 
             # Check for HTTP errors (like 401, 403, 404, 500 etc.)

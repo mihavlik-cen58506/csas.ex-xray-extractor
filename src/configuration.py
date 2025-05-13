@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from keboola.component.exceptions import UserException
 from pydantic import BaseModel, Field, ValidationError
@@ -14,6 +15,14 @@ class Configuration(BaseModel):
     project_id: str = Field()
     folder_path: str = Field()
 
+    # Optional fields for proxy configuration, will get defaults from configSchema.json
+    proxy_address: Optional[str] = Field(
+        default=None, description="Optional proxy server address"
+    )
+    proxy_port: Optional[int] = Field(
+        default=None, description="Optional proxy server port"
+    )
+
     def __init__(self, **data):
         try:
             super().__init__(**data)
@@ -23,3 +32,20 @@ class Configuration(BaseModel):
 
         if self.debug:
             logging.debug("Component will run in Debug mode")
+
+        # --- Mandatory Proxy Check ---
+        if not self.proxy_address or not self.proxy_port:
+            raise UserException(
+                "Proxy server configuration is mandatory. "
+                "Please provide both 'proxy_address' and 'proxy_port' in the component configuration."
+            )
+        # --- End Mandatory Proxy Check ---
+
+        if self.proxy_address:
+            logging.info(f"Proxy Address: {self.proxy_address}")
+            logging.info(f"Proxy Port: {self.proxy_port}")
+        else:
+            # This log should ideally not be reached if the mandatory check works
+            logging.info(
+                "No proxy configured in parameters (this should not happen if mandatory check is enabled)."
+            )
