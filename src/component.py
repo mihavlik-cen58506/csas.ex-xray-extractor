@@ -139,7 +139,7 @@ class Component(ComponentBase):
                     else:
                         logging.debug(f"Row {row_count}: JQL query: '{jql_query}'")
 
-                    # ###### Call Xray API ######
+                    # ##### Call Xray API #####
                     try:
                         api_result = xray_client.query_tests_by_folder_and_jql(
                             project_id=params.project_id,
@@ -152,7 +152,7 @@ class Component(ComponentBase):
                             f"{list(api_result.keys()) if api_result else 'Empty'}"
                         )
 
-                        # ####### Process API Result and Add to Row #######
+                        # ##### Process API Result and Add to Row #####
                         result_json_string = json.dumps(api_result)
 
                         row[params.result_output_column] = result_json_string
