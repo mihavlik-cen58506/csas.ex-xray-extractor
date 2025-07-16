@@ -139,7 +139,7 @@ class Component(ComponentBase):
                     else:
                         logging.debug(f"Row {row_count}: JQL query: '{jql_query}'")
 
-                    # ####### Call Xray API #######
+                    # ###### Call Xray API ######
                     try:
                         api_result = xray_client.query_tests_by_folder_and_jql(
                             project_id=params.project_id,
