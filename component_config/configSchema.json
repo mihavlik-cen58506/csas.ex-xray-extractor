@@ -25,29 +25,17 @@
       "format": "password",
       "propertyOrder": 20
     },
-    "jql_input_column": {
+    "input_column_name": {
       "type": "string",
-      "title": "JQL Input Column Name:",
+      "title": "Input Column Name:",
       "description": "The exact name of the column in the input table that contains JQL queries.",
       "propertyOrder": 30
     },
-    "result_output_column": {
+    "output_column_name": {
       "type": "string",
-      "title": "Output Result Column Name:",
+      "title": "Output Column Name:",
       "description": "The name for the new column that will be added to the output table to store the Xray API result (e.g., JSON response or parsed value).",
       "propertyOrder": 40
-    },
-    "project_id": {
-      "type": "string",
-      "title": "Xray Project ID:",
-      "description": "The ID of the Jira/Xray project from which to extract tests.",
-      "propertyOrder": 50
-    },
-    "folder_path": {
-      "type": "string",
-      "title": "Xray Folder Path:",
-      "description": "The path to the folder in Xray containing the tests (e.g., '/My Folder/Subfolder'). Extraction will be limited to this folder and its descendants (if applicable in API call).",
-      "propertyOrder": 60
     },
     "incremental": {
       "type": "boolean",

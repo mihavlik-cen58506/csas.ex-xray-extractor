@@ -92,20 +92,19 @@ class XrayApiClient:
                 "Failed to obtain Xray Bearer token after multiple attempts."
             )
 
-    def query_tests_by_folder_and_jql(
-        self, project_id: str, folder_path: str, jql_query: str
-    ) -> dict:
+    def query_tests_by_dynamic_params(
+        self, project_id: str, folder_path: str = None, jql_query: str = None
+    ) -> int:
         """
-        Executes a GraphQL query to get tests based on Project ID, Folder Path,
-        and optionally JQL string.
+        Executes a GraphQL query to get tests based on dynamic parameters.
 
         Args:
-            project_id: The Xray/Jira Project ID.
-            folder_path: The path to the folder in Xray.
-            jql_query: The JQL query string (can be empty).
+            project_id: The Xray/Jira Project ID (required).
+            folder_path: The path to the folder in Xray (optional).
+            jql_query: The JQL query string (optional).
 
         Returns:
-            A dictionary containing the parsed JSON response from the API.
+            The total count of tests matching the criteria.
         Raises:
             requests.exceptions.RequestException: If the API request fails.
             ValueError: If the API response is not valid JSON.
@@ -115,52 +114,34 @@ class XrayApiClient:
         if not self._bearer_token:
             self._authenticate()
 
-        logging.debug(f"Executing GraphQL query for JQL: '{jql_query}'")
+        logging.debug(f"Executing GraphQL query - Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'")
 
         # Define the GraphQL query string.
         graphql_query = """
-            query GetTestsInFolderAndJQL(
+            query GetTestsDynamic(
                 $projectId: String!,
-                $folderPath: String!,
-                $jql: String # JQL is optional
-                # $includeDescendants: Boolean # Uncomment if you want to control this via a variable
+                $folder: FolderSearchInput,
+                $jql: String
             ) {
                 getTests(
                     projectId: $projectId,
-                    folder: {
-                        path: $folderPath
-                        # includeDescendants: true # Or use $includeDescendants variable here
-                    },
-                    jql: $jql, # Use the JQL variable
-                    limit: 100, # Fixed limit, can be made a variable
-                    start: 0    # Fixed start, can be made a variable
+                    folder: $folder,
+                    jql: $jql,
+                    limit: 100
                 ) {
                     total
-                    start
-                    limit
-                    results {
-                        issueId
-                        testType {
-                            name
-                            kind
-                        }
-                        # Original fields + fields from Postman example if needed
-                        # jira(fields: ["summary", "key", "status"])
-                        # steps { id, action, result }
-                    }
                 }
             }
         """
 
-        # Define the variables for the GraphQL query
-        query_variables = {
-            "projectId": project_id,
-            "folderPath": folder_path,
-            "jql": (
-                jql_query if jql_query else None
-            ),  # Pass JQL only if not empty, otherwise pass None
-            # "includeDescendants": True # Value if $includeDescendants variable is used
-        }
+        # Build variables dynamically
+        query_variables = {"projectId": project_id}
+        
+        if folder_path and folder_path.strip():
+            query_variables["folder"] = {"path": folder_path}
+            
+        if jql_query and jql_query.strip():
+            query_variables["jql"] = jql_query
 
         # Prepare the request payload for GraphQL
         request_payload = {"query": graphql_query, "variables": query_variables}
@@ -189,10 +170,10 @@ class XrayApiClient:
                 )
                 raise Exception(f"GraphQL query errors: {api_response['errors']}")
 
-            # Return the data part of the response
-            return api_response.get(
-                "data", {}
-            )  # Return the 'data' object or empty dict
+            # Extract and return only the total count
+            data = api_response.get("data", {})
+            tests_data = data.get("getTests", {})
+            return tests_data.get("total", 0)
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Xray GraphQL API request failed: {e}")
