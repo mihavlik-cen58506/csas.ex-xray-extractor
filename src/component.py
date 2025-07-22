@@ -151,7 +151,9 @@ class Component(ComponentBase):
 
                         # Validate required project_id
                         if not project_id or not project_id.strip():
-                            raise ValueError("Project ID is required and cannot be empty")
+                            raise ValueError(
+                                "Project ID is required and cannot be empty"
+                            )
 
                         # Clean up parameters
                         project_id = project_id.strip()

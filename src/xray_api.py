@@ -114,7 +114,9 @@ class XrayApiClient:
         if not self._bearer_token:
             self._authenticate()
 
-        logging.debug(f"Executing GraphQL query - Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'")
+        logging.debug(
+            f"Executing GraphQL query - Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
+        )
 
         # Define the GraphQL query string.
         graphql_query = """
@@ -136,10 +138,10 @@ class XrayApiClient:
 
         # Build variables dynamically
         query_variables = {"projectId": project_id}
-        
+
         if folder_path and folder_path.strip():
             query_variables["folder"] = {"path": folder_path}
-            
+
         if jql_query and jql_query.strip():
             query_variables["jql"] = jql_query
 
