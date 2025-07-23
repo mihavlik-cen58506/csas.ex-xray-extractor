@@ -1,151 +1,85 @@
-XRay Extractor
-=============
+# Xray Test Count Extractor
 
-Keboola component pro extrakci počtu testů z Xray Cloud API pomocí dynamických parametrů.
+Keboola komponenta pro extrakci počtu testů z Xray Cloud API.
 
-Functionality Notes
-===================
+## Funkcionalita
 
-Komponenta načítá CSV soubor s JSON parametry pro každý řádek, volá Xray GraphQL API a vrací počet nalezených testů.
+Komponenta načítá vstupní tabulku s parametry, volá Xray GraphQL API a vrací počet nalezených testů pro každý řádek.
 
-Prerequisites
-=============
+## Konfigurace
 
-- Xray Cloud API přihlašovací údaje (Client ID a Client Secret)
-- Správně nakonfigurovaná vstupní a výstupní tabulka v Keboole
+### Parametry
 
-Features
-========
+- **#xray_client_id** (povinný) - Xray Cloud Client ID
+- **#xray_client_secret** (povinný) - Xray Cloud Client Secret  
+- **input_column_name** (povinný) - Název sloupce s parametry
+- **output_column_name** (povinný) - Název sloupce pro výstup
+- **debug** (volitelný) - Debug logování (default: false)
+- **incremental** (volitelný) - Inkrementální načítání (default: false)
 
-| **Feature**             | **Description**                               |
-|-------------------------|-----------------------------------------------|
-| Dynamické parametry     | Každý řádek může mít jiné project/folder/JQL |
-| GraphQL API             | Používá Xray Cloud GraphQL endpoint          |
-| Error handling          | Robustní zpracování chyb a retry logika      |
-| Incremental Loading     | Podporuje inkrementální načítání             |
-| Debug mode              | Rozšířené logování pro debugging             |
+### Vstupní data
 
-Configuration
-=============
+Do sloupce v Keboola Storage tabulce zadejte JSON array se 3 parametry:
 
-## Parametry komponenty
-
-### input_column_name
-**Povinný** - Název sloupce ve vstupní tabulce obsahující JSON pole s parametry.
-
-### output_column_name  
-**Povinný** - Název sloupce do kterého se uloží počet nalezených testů.
-
-### #xray_client_id
-**Povinný** - Xray Cloud Client ID pro autentifikaci.
-
-### #xray_client_secret
-**Povinný** - Xray Cloud Client Secret pro autentifikaci.
-
-### debug
-**Volitelný** (default: false) - Zapne rozšířené debug logování.
-
-### incremental
-**Volitelný** (default: false) - Zapne inkrementální načítání.
-
-## Formát vstupních dat
-
-Každý řádek ve vstupní tabulce musí obsahovat JSON pole se třemi parametry ve správném CSV formátu.
-
-### CSV formát (s escapovanými uvozovkami):
-```csv
-input_column,description
-"[""PROJ-123"", ""ui/login"", ""assignee = currentUser()""]",Login tests
-"[""PROJ-456"", """", ""project = DEMO AND status = Open""]",Demo tests  
-"[""PROJ-789"", ""api/endpoints"", """"]",API tests
-"[""PROJ-999"", """", """"]",All project tests
+```
+[project_id, folder_path, jql_query]
 ```
 
-### JSON struktura (po parsování):
-```json
-["PROJECT_ID", "folder/path", "jql query"]
+**Příklady:**
+```
+["10074", "/CoE Testy/Adam - Test Import", ""]
+["PROJ-123", "ui/login", "assignee = currentUser()"]
+["PROJ-456", "", "project = DEMO AND status = Open"]
+["PROJ-789", "api/endpoints", "status IN ('Open', 'Done')"]
+["PROJ-999", "", ""]
 ```
 
-### Příklady hodnot:
-- `["PROJ-123", "ui/login", "assignee = currentUser()"]` - všechny parametry
-- `["PROJ-456", "", "project = DEMO AND status = Open"]` - bez folder  
-- `["PROJ-789", "api/endpoints", ""]` - bez JQL
-- `["PROJ-999", "", ""]` - jen project ID
+**Parametry:**
+- **project_id** - Xray/Jira Project ID (povinný)
+- **folder_path** - Cesta ke složce v Xray (volitelný, použijte prázdný string "")
+- **jql_query** - JQL dotaz (volitelný, použijte prázdný string "")
 
-**Poznámka**: V CSV jsou uvozovky uvnitř hodnoty escapované zdvojením `""`. Po načtení komponenta automaticky parsuje JSON a získá správné hodnoty.
+## Výstup
 
-## Mapování tabulek
-
-### Vstupní tabulka
-Musí obsahovat sloupec s JSON parametry podle `input_column_name`.
-
-### Výstupní tabulka
-Komponenta vytvoří výstupní tabulku s původními sloupci + nový sloupec podle `output_column_name` obsahující počet testů.
-
-Output
-======
-
-Pro každý řádek vrací:
-- **Úspěch**: Číselnou hodnotu s počtem nalezených testů (např. `42`)
-- **Chyba parsování**: `PARSE_ERROR: error message`
-- **API chyba**: `API_ERROR: error message`
-- **Prázdný vstup**: `ERROR: Empty input data`
+Komponenta přidá nový sloupec s počtem testů:
+- **Úspěch**: Číselná hodnota (např. 42)
+- **Chyba**: Error zpráva s prefixem PARSE_ERROR nebo API_ERROR
 
 ## GraphQL dotazy
 
-Komponenta vytváří tyto GraphQL dotazy podle vstupních parametrů:
+Komponenta vytváří tyto dotazy podle parametrů:
 
 ```graphql
 # Všechny parametry
 query {
   getTests(
-    projectId: "PROJ-123", 
-    folder: {path: "ui/login"}, 
-    jql: "assignee = currentUser()", 
+    projectId: "10074"
+    folder: { path: "/CoE Testy/Adam - Test Import" }
+    jql: "status = Open"
     limit: 100
   ) {
     total
   }
 }
 
-# Jen project + JQL
+# Pouze project ID
 query {
-  getTests(
-    projectId: "PROJ-456", 
-    jql: "project = DEMO", 
-    limit: 100
-  ) {
-    total
-  }
-}
-
-# Jen project ID
-query {
-  getTests(projectId: "PROJ-999", limit: 100) {
+  getTests(projectId: "10074", limit: 100) {
     total
   }
 }
 ```
 
-Development
------------
-
-Pro lokální vývoj:
+## Development
 
 ```bash
-git clone https://github.com/mihavlik-cen58506/csas.ex-xray-extractor csas.ex-xray-extractor
+git clone https://github.com/mihavlik-cen58506/csas.ex-xray-extractor
 cd csas.ex-xray-extractor
 docker-compose build
 docker-compose run --rm dev
 ```
 
-Pro spuštění testů:
-
+Testy:
 ```bash
 docker-compose run --rm test
 ```
-
-Integration
-===========
-
-Pro nasazení do Kebooly viz [deployment dokumentace](https://developers.keboola.com/extend/component/deployment/).

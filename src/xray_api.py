@@ -140,7 +140,10 @@ class XrayApiClient:
         query_variables = {"projectId": project_id}
 
         if folder_path and folder_path.strip():
-            query_variables["folder"] = {"path": folder_path}
+            query_variables["folder"] = {
+                "path": folder_path,
+                "includeDescendants": True,
+            }
 
         if jql_query and jql_query.strip():
             query_variables["jql"] = jql_query
