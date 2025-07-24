@@ -43,7 +43,7 @@ Do sloupce v Keboola Storage tabulce zadejte JSON array se 3 parametry:
 
 Komponenta přidá nový sloupec s počtem testů:
 - **Úspěch**: Číselná hodnota (např. 42)
-- **Chyba**: Error zpráva s prefixem PARSE_ERROR nebo API_ERROR
+- **Chyba**: NULL hodnota (chyby jsou logovány)
 
 ## GraphQL dotazy
 

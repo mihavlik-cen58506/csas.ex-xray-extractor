@@ -81,13 +81,13 @@ class Component(ComponentBase):
             )
 
         if len(input_tables) > 1:
-            logging.warning(
+            logging.debug(
                 f"More than one input table mapped ({len(input_tables)}). "
                 "Processing the first one."
             )
 
         input_table_def = input_tables[0]
-        logging.info(
+        logging.debug(
             f"Processing input table: {input_table_def.name} "
             f"(file: {input_table_def.full_path})"
         )
@@ -108,7 +108,7 @@ class Component(ComponentBase):
                         f"{list(reader.fieldnames)}"
                     )
 
-                logging.info(
+                logging.debug(
                     "Input CSV header read. "
                     f"Required input column '{params.input_column_name}' found."
                 )
@@ -117,12 +117,12 @@ class Component(ComponentBase):
                 if params.output_column_name not in output_fieldnames:
                     output_fieldnames.append(params.output_column_name)
                 else:
-                    logging.warning(
+                    logging.debug(
                         f"Output column name '{params.output_column_name}' already "
                         "exists in input. It will be overwritten."
                     )
 
-                logging.info("Processing rows and calling Xray API...")
+                logging.debug("Processing rows and calling Xray API...")
                 for row in reader:
                     row_count += 1
                     logging.debug(f"Processing row {row_count}.")
@@ -131,10 +131,10 @@ class Component(ComponentBase):
                     input_data = row.get(params.input_column_name, "").strip()
 
                     if not input_data:
-                        logging.error(
+                        logging.debug(
                             f"Row {row_count}: Input column '{params.input_column_name}' is empty."
                         )
-                        row[params.output_column_name] = "ERROR: Empty input data"
+                        row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
 
@@ -169,7 +169,7 @@ class Component(ComponentBase):
                         logging.error(
                             f"Row {row_count}: Failed to parse input data '{input_data}': {parse_exc}"
                         )
-                        row[params.output_column_name] = f"PARSE_ERROR: {parse_exc}"
+                        row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
 
@@ -193,7 +193,7 @@ class Component(ComponentBase):
                             f"'{project_id}', Folder Path '{folder_path}', "
                             f"JQL '{jql_query}': {api_exc}"
                         )
-                        row[params.output_column_name] = f"API_ERROR: {api_exc}"
+                        row[params.output_column_name] = None
 
                     processed_rows.append(row)
 
@@ -213,7 +213,7 @@ class Component(ComponentBase):
 
         # ####### Write Output Table #######
         # Get output table definition using create_out_table_definition
-        logging.info("Creating output table definition...")
+        logging.debug("Creating output table definition...")
 
         output_tables_config = self.configuration.tables_output_mapping
         if not output_tables_config:
@@ -221,7 +221,7 @@ class Component(ComponentBase):
                 "No output tables defined. Please map at least one output table."
             )
         if len(output_tables_config) > 1:
-            logging.warning(
+            logging.debug(
                 f"More than one output table defined ({len(output_tables_config)}). "
                 "Using the first one for output."
             )
@@ -258,14 +258,14 @@ class Component(ComponentBase):
                 output_table_def.incremental = True
                 logging.debug("Incremental loading enabled for output manifest.")
 
-            logging.info(
+            logging.debug(
                 f"Writing output to table: {output_table_def.name} "
                 f"(file: {output_table_def.full_path})"
             )
 
             # 2. Write the processed data to the output CSV file
             output_csv_path = output_table_def.full_path
-            logging.info(
+            logging.debug(
                 f"Writing {len(processed_rows)} rows to output CSV file: "
                 f"{output_csv_path}"
             )
@@ -278,15 +278,15 @@ class Component(ComponentBase):
                 writer.writeheader()
                 writer.writerows(processed_rows)
 
-            logging.info("Output CSV file written successfully.")
+            logging.debug("Output CSV file written successfully.")
 
             # 3. Write the manifest file for the output table
-            logging.info(
+            logging.debug(
                 "Writing manifest file for output table: "
                 f"{output_table_def.full_path}.manifest"
             )
             self.write_manifest(output_table_def)
-            logging.info("Manifest file written successfully.")
+            logging.debug("Manifest file written successfully.")
 
         except Exception as e:
             logging.error(

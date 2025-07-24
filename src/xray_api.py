@@ -178,7 +178,14 @@ class XrayApiClient:
             # Extract and return only the total count
             data = api_response.get("data", {})
             tests_data = data.get("getTests", {})
-            return tests_data.get("total", 0)
+            total = tests_data.get("total", 0)
+            
+            # Ensure it's an integer
+            try:
+                return int(total) if total is not None else 0
+            except (ValueError, TypeError):
+                logging.warning(f"Invalid total value from GraphQL API: {total}, returning 0")
+                return 0
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Xray GraphQL API request failed: {e}")
