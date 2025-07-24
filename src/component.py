@@ -127,6 +127,14 @@ class Component(ComponentBase):
                     row_count += 1
                     logging.debug(f"Processing row {row_count}.")
 
+                    # Check AUTO_DATA_AUTOMATICALLY flag
+                    auto_data_flag = row.get("AUTO_DATA_AUTOMATICALLY", "").strip().upper()
+                    if auto_data_flag != "Y":
+                        logging.debug(f"Row {row_count}: AUTO_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row.")
+                        row[params.output_column_name] = None
+                        processed_rows.append(row)
+                        continue
+
                     # Parse JSON array from input column
                     input_data = row.get(params.input_column_name, "").strip()
 

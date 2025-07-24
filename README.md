@@ -11,7 +11,7 @@ Komponenta načítá vstupní tabulku s parametry, volá Xray GraphQL API a vrac
 ### Parametry
 
 - **#xray_client_id** (povinný) - Xray Cloud Client ID
-- **#xray_client_secret** (povinný) - Xray Cloud Client Secret  
+- **#xray_client_secret** (povinný) - Xray Cloud Client Secret
 - **input_column_name** (povinný) - Název sloupce s parametry
 - **output_column_name** (povinný) - Název sloupce pro výstup
 - **debug** (volitelný) - Debug logování (default: false)
@@ -19,22 +19,25 @@ Komponenta načítá vstupní tabulku s parametry, volá Xray GraphQL API a vrac
 
 ### Vstupní data
 
-Do sloupce v Keboola Storage tabulce zadejte JSON array se 3 parametry:
+Vstupní tabulka musí obsahovat:
 
-```
-[project_id, folder_path, jql_query]
-```
+**Sloupec s parametry** (podle `input_column_name`):
+JSON array se 3 parametry: `[project_id, folder_path, jql_query]`
+
+**Sloupec AUTO_DATA_AUTOMATICALLY**:
+- **Y** - provede se GraphQL dotaz
+- **N** nebo prázdné - řádek se přeskočí (výchozí)
 
 **Příklady:**
 ```
-["10074", "/CoE Testy/Adam - Test Import", ""]
-["PROJ-123", "ui/login", "assignee = currentUser()"]
-["PROJ-456", "", "project = DEMO AND status = Open"]
-["PROJ-789", "api/endpoints", "status IN ('Open', 'Done')"]
-["PROJ-999", "", ""]
+ input_column
+ ["10074", "/CoE Testy/Adam - Test Import", ""]
+ ["12345", "ui/login", "assignee = currentUser()"]
+ ["45678", "", "project = DEMO AND status = Open"]
+ ["78910", "api/endpoints", "status IN ('Open', 'Done')"]
 ```
 
-**Parametry:**
+**Parametry JSON:**
 - **project_id** - Xray/Jira Project ID (povinný)
 - **folder_path** - Cesta ke složce v Xray (volitelný, použijte prázdný string "")
 - **jql_query** - JQL dotaz (volitelný, použijte prázdný string "")
