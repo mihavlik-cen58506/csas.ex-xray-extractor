@@ -96,6 +96,7 @@ class Component(ComponentBase):
         input_csv_path = input_table_def.full_path
         processed_rows = []
         row_count = 0
+        error_rows = []  # Collect problematic rows for summary
 
         try:
             with open(input_csv_path, mode="r", encoding="utf-8") as csvfile:
@@ -128,9 +129,13 @@ class Component(ComponentBase):
                     logging.debug(f"Processing row {row_count}.")
 
                     # Check AUTO_DATA_AUTOMATICALLY flag
-                    auto_data_flag = row.get("AUTO_DATA_AUTOMATICALLY", "").strip().upper()
+                    auto_data_flag = (
+                        row.get("AUTO_DATA_AUTOMATICALLY", "").strip().upper()
+                    )
                     if auto_data_flag != "Y":
-                        logging.debug(f"Row {row_count}: AUTO_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row.")
+                        logging.debug(
+                            f"Row {row_count}: AUTO_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row."
+                        )
                         row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
@@ -139,9 +144,11 @@ class Component(ComponentBase):
                     input_data = row.get(params.input_column_name, "").strip()
 
                     if not input_data:
-                        logging.debug(
-                            f"Row {row_count}: Input column '{params.input_column_name}' is empty."
-                        )
+                        key_value = row.get("KEY", "N/A")
+                        name_value = row.get("NAME", "N/A")
+                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Input column '{params.input_column_name}' is empty but AUTO_DATA_AUTOMATICALLY is set to 'Y'."
+                        logging.warning(error_msg)
+                        error_rows.append(error_msg)
                         row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
@@ -174,9 +181,11 @@ class Component(ComponentBase):
                         )
 
                     except (json.JSONDecodeError, ValueError) as parse_exc:
-                        logging.error(
-                            f"Row {row_count}: Failed to parse input data '{input_data}': {parse_exc}"
-                        )
+                        key_value = row.get("KEY", "N/A")
+                        name_value = row.get("NAME", "N/A")
+                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse input data '{input_data}': {parse_exc}"
+                        logging.warning(error_msg)
+                        error_rows.append(error_msg)
                         row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
@@ -209,6 +218,13 @@ class Component(ComponentBase):
                     f"Finished processing {row_count} rows. "
                     f"Collected {len(processed_rows)} rows for output."
                 )
+
+                # Summary warning if there were any errors
+                if error_rows:
+                    logging.warning(
+                        f"PROCESSING SUMMARY: Found {len(error_rows)} problematic rows during processing:\n"
+                        + "\n".join([f"  - {error}" for error in error_rows])
+                    )
 
         except FileNotFoundError:
             logging.error(f"Input CSV file not found: {input_csv_path}")
