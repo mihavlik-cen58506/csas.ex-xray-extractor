@@ -146,7 +146,8 @@ class Component(ComponentBase):
                     if not input_data:
                         key_value = row.get("KEY", "N/A")
                         name_value = row.get("NAME", "N/A")
-                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Input column '{params.input_column_name}' is empty but AUTO_DATA_AUTOMATICALLY is set to 'Y'."
+                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Input column "
+                        error_msg += f"'{params.input_column_name}' is empty but AUTO_DATA_AUTOMATICALLY is set to 'Y'."
                         logging.warning(error_msg)
                         error_rows.append(error_msg)
                         row[params.output_column_name] = None
@@ -183,7 +184,8 @@ class Component(ComponentBase):
                     except (json.JSONDecodeError, ValueError) as parse_exc:
                         key_value = row.get("KEY", "N/A")
                         name_value = row.get("NAME", "N/A")
-                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse input data '{input_data}': {parse_exc}"
+                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse "
+                        error_msg += f"input data '{input_data}': {parse_exc}"
                         logging.warning(error_msg)
                         error_rows.append(error_msg)
                         row[params.output_column_name] = None
