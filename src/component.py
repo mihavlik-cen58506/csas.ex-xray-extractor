@@ -128,13 +128,13 @@ class Component(ComponentBase):
                     row_count += 1
                     logging.debug(f"Processing row {row_count}.")
 
-                    # Check AUTO_DATA_AUTOMATICALLY flag
+                    # Check AUTE_DATA_AUTOMATICALLY flag
                     auto_data_flag = (
-                        row.get("AUTO_DATA_AUTOMATICALLY", "").strip().upper()
+                        row.get("AUTE_DATA_AUTOMATICALLY", "").strip().upper()
                     )
                     if auto_data_flag != "Y":
                         logging.debug(
-                            f"Row {row_count}: AUTO_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row."
+                            f"Row {row_count}: AUTE_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row."
                         )
                         row[params.output_column_name] = None
                         processed_rows.append(row)
@@ -147,7 +147,7 @@ class Component(ComponentBase):
                         key_value = row.get("KEY", "N/A")
                         name_value = row.get("NAME", "N/A")
                         error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Input column "
-                        error_msg += f"'{params.input_column_name}' is empty but AUTO_DATA_AUTOMATICALLY is set to 'Y'."
+                        error_msg += f"'{params.input_column_name}' is empty but AUTE_DATA_AUTOMATICALLY is set to 'Y'."
                         logging.warning(error_msg)
                         error_rows.append(error_msg)
                         row[params.output_column_name] = None
