@@ -6,7 +6,9 @@
     "#xray_client_id",
     "#xray_client_secret",
     "input_column_name",
-    "output_column_name"
+    "output_column_name",
+    "input_column_name_2",
+    "output_column_name_2"
   ],
   "properties": {
     "#xray_client_id": {
@@ -25,15 +27,27 @@
     },
     "input_column_name": {
       "type": "string",
-      "title": "Input Column Name:",
+      "title": "First Input Column Name:",
       "description": "Name of the column containing JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
       "propertyOrder": 30
     },
     "output_column_name": {
       "type": "string",
-      "title": "Output Column Name:",
+      "title": "First Output Column Name:",
       "description": "Name of the column where test counts will be stored. Contains numeric values or error messages.",
       "propertyOrder": 40
+    },
+    "input_column_name_2": {
+      "type": "string",
+      "title": "Second Input Column Name:",
+      "description": "Name of the column containing JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
+      "propertyOrder": 50
+    },
+    "output_column_name_2": {
+      "type": "string",
+      "title": "Second Output Column Name:",
+      "description": "Name of the column where test counts will be stored. Contains numeric values or error messages.",
+      "propertyOrder": 60
     },
     "incremental": {
       "type": "boolean",

@@ -11,6 +11,8 @@ class Configuration(BaseModel):
     xray_client_secret: str = Field(alias="#xray_client_secret")
     input_column_name: str = Field()
     output_column_name: str = Field()
+    input_column_name_2: str = Field()
+    output_column_name_2: str = Field()
 
     def __init__(self, **data):
         try:

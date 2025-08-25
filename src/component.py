@@ -20,6 +20,63 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
+    def _process_column_pair(self, row, input_col, xray_client, row_num, error_rows):
+        """Process one input/output column pair for a row."""
+        input_data = row.get(input_col, "").strip()
+
+        if not input_data:
+            key_value = row.get("KEY", "N/A")
+            name_value = row.get("NAME", "N/A")
+            error_msg = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}'): Input column "
+            error_msg += (
+                f"'{input_col}' is empty but AUTE_DATA_AUTOMATICALLY is set to 'Y'."
+            )
+            logging.warning(error_msg)
+            error_rows.append(error_msg)
+            return None
+
+        try:
+            params_array = json.loads(input_data)
+            if not isinstance(params_array, list) or len(params_array) != 3:
+                raise ValueError("Input must be JSON array with exactly 3 elements")
+
+            project_id, folder_path, jql_query = params_array
+            if not project_id or not project_id.strip():
+                raise ValueError("Project ID is required and cannot be empty")
+
+            project_id = project_id.strip()
+            folder_path = folder_path.strip() if folder_path else None
+            jql_query = jql_query.strip() if jql_query else None
+
+            logging.debug(
+                f"Row {row_num}: Parsed parameters for '{input_col}' - "
+                f"Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
+            )
+
+        except (json.JSONDecodeError, ValueError) as parse_exc:
+            key_value = row.get("KEY", "N/A")
+            name_value = row.get("NAME", "N/A")
+            error_msg = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse "
+            error_msg += f"input data in '{input_col}' '{input_data}': {parse_exc}"
+            logging.warning(error_msg)
+            error_rows.append(error_msg)
+            return None
+
+        try:
+            total_count = xray_client.query_tests_by_dynamic_params(
+                project_id=project_id, folder_path=folder_path, jql_query=jql_query
+            )
+            logging.debug(
+                f"Row {row_num}: API success for '{input_col}' - {total_count} tests found"
+            )
+            return total_count
+        except Exception as api_exc:
+            logging.error(
+                f"Row {row_num}: Error calling Xray API for '{input_col}' - Project ID "
+                f"'{project_id}', Folder Path '{folder_path}', JQL '{jql_query}': {api_exc}"
+            )
+            return None
+
     def run(self):
         """
         Main execution method.
@@ -41,6 +98,8 @@ class Component(ComponentBase):
             logging.info(f"Incremental: {params.incremental}")
             logging.info(f"Input Column Name: {params.input_column_name}")
             logging.info(f"Output Column Name: {params.output_column_name}")
+            logging.info(f"Input Column Name 2: {params.input_column_name_2}")
+            logging.info(f"Output Column Name 2: {params.output_column_name_2}")
             logging.debug(
                 f"Xray Client ID (last 5 chars): ...{params.xray_client_id[-5:]}"
             )
@@ -109,6 +168,13 @@ class Component(ComponentBase):
                         f"{list(reader.fieldnames)}"
                     )
 
+                if params.input_column_name_2 not in reader.fieldnames:
+                    raise UserException(
+                        f"Input table '{input_table_def.name}' is missing the required "
+                        f"input column: '{params.input_column_name_2}'. Available columns: "
+                        f"{list(reader.fieldnames)}"
+                    )
+
                 logging.debug(
                     "Input CSV header read. "
                     f"Required input column '{params.input_column_name}' found."
@@ -120,6 +186,14 @@ class Component(ComponentBase):
                 else:
                     logging.debug(
                         f"Output column name '{params.output_column_name}' already "
+                        "exists in input. It will be overwritten."
+                    )
+
+                if params.output_column_name_2 not in output_fieldnames:
+                    output_fieldnames.append(params.output_column_name_2)
+                else:
+                    logging.debug(
+                        f"Output column name '{params.output_column_name_2}' already "
                         "exists in input. It will be overwritten."
                     )
 
@@ -136,83 +210,25 @@ class Component(ComponentBase):
                         logging.debug(
                             f"Row {row_count}: AUTE_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row."
                         )
-                        row[params.output_column_name] = None
                         processed_rows.append(row)
                         continue
 
-                    # Parse JSON array from input column
-                    input_data = row.get(params.input_column_name, "").strip()
+                    # Process both column pairs
+                    row[params.output_column_name] = self._process_column_pair(
+                        row,
+                        params.input_column_name,
+                        xray_client,
+                        row_count,
+                        error_rows,
+                    )
 
-                    if not input_data:
-                        key_value = row.get("KEY", "N/A")
-                        name_value = row.get("NAME", "N/A")
-                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Input column "
-                        error_msg += f"'{params.input_column_name}' is empty but AUTE_DATA_AUTOMATICALLY is set to 'Y'."
-                        logging.warning(error_msg)
-                        error_rows.append(error_msg)
-                        row[params.output_column_name] = None
-                        processed_rows.append(row)
-                        continue
-
-                    try:
-                        # Parse JSON array: [project_id, folder_path, jql_query]
-                        params_array = json.loads(input_data)
-
-                        if not isinstance(params_array, list) or len(params_array) != 3:
-                            raise ValueError(
-                                "Input must be JSON array with exactly 3 elements"
-                            )
-
-                        project_id, folder_path, jql_query = params_array
-
-                        # Validate required project_id
-                        if not project_id or not project_id.strip():
-                            raise ValueError(
-                                "Project ID is required and cannot be empty"
-                            )
-
-                        # Clean up parameters
-                        project_id = project_id.strip()
-                        folder_path = folder_path.strip() if folder_path else None
-                        jql_query = jql_query.strip() if jql_query else None
-
-                        logging.debug(
-                            f"Row {row_count}: Parsed parameters - "
-                            f"Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
-                        )
-
-                    except (json.JSONDecodeError, ValueError) as parse_exc:
-                        key_value = row.get("KEY", "N/A")
-                        name_value = row.get("NAME", "N/A")
-                        error_msg = f"Row {row_count} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse "
-                        error_msg += f"input data '{input_data}': {parse_exc}"
-                        logging.warning(error_msg)
-                        error_rows.append(error_msg)
-                        row[params.output_column_name] = None
-                        processed_rows.append(row)
-                        continue
-
-                    # ##### Call Xray API #####
-                    try:
-                        total_count = xray_client.query_tests_by_dynamic_params(
-                            project_id=project_id,
-                            folder_path=folder_path,
-                            jql_query=jql_query,
-                        )
-
-                        # Store only the total count
-                        row[params.output_column_name] = total_count
-                        logging.debug(
-                            f"Row {row_count}: API success - {total_count} tests found"
-                        )
-
-                    except Exception as api_exc:
-                        logging.error(
-                            f"Row {row_count}: Error calling Xray API for Project ID "
-                            f"'{project_id}', Folder Path '{folder_path}', "
-                            f"JQL '{jql_query}': {api_exc}"
-                        )
-                        row[params.output_column_name] = None
+                    row[params.output_column_name_2] = self._process_column_pair(
+                        row,
+                        params.input_column_name_2,
+                        xray_client,
+                        row_count,
+                        error_rows,
+                    )
 
                     processed_rows.append(row)
 
