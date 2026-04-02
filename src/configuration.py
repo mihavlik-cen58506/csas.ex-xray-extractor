@@ -9,10 +9,10 @@ class Configuration(BaseModel):
     incremental: bool = False
     xray_client_id: str = Field(alias="#xray_client_id")
     xray_client_secret: str = Field(alias="#xray_client_secret")
-    input_column_name: str = Field()
-    output_column_name: str = Field()
-    input_column_name_2: str = Field()
-    output_column_name_2: str = Field()
+    total_tests_source_column_input: str = Field()
+    total_tests_number_column_output: str = Field()
+    automated_tests_source_column_input: str = Field()
+    automated_tests_number_column_output: str = Field()
 
     def __init__(self, **data):
         try:

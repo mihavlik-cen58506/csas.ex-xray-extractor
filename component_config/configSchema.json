@@ -5,10 +5,10 @@
   "required": [
     "#xray_client_id",
     "#xray_client_secret",
-    "input_column_name",
-    "output_column_name",
-    "input_column_name_2",
-    "output_column_name_2"
+    "total_tests_source_column_input",
+    "total_tests_number_column_output",
+    "automated_tests_source_column_input",
+    "automated_tests_number_column_output"
   ],
   "properties": {
     "#xray_client_id": {
@@ -25,27 +25,27 @@
       "format": "password",
       "propertyOrder": 20
     },
-    "input_column_name": {
+    "total_tests_source_column_input": {
       "type": "string",
-      "title": "First Input Column Name:",
-      "description": "Name of the column containing JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
+      "title": "Total Tests Source Column Name:",
+      "description": "Column containing query for total test count (or will be calculated from manual + automated if manual input exists) as JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
       "propertyOrder": 30
     },
-    "output_column_name": {
+    "total_tests_number_column_output": {
       "type": "string",
-      "title": "First Output Column Name:",
-      "description": "Name of the column where test counts will be stored. Contains numeric values or error messages.",
+      "title": "Total Tests Number Output Column Name:",
+      "description": "Column where test counts will be stored. Contains numeric values or error messages.",
       "propertyOrder": 40
     },
-    "input_column_name_2": {
+    "automated_tests_source_column_input": {
       "type": "string",
-      "title": "Second Input Column Name:",
-      "description": "Name of the column containing JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
+      "title": "Automated Tests Source Column Name:",
+      "description": "Column containing query for automated tests count as JSON array with parameters: [\"project_id\", \"folder_path\", \"jql_query\"]. Empty strings for optional parameters.",
       "propertyOrder": 50
     },
-    "output_column_name_2": {
+    "automated_tests_number_column_output": {
       "type": "string",
-      "title": "Second Output Column Name:",
+      "title": "Automated Tests Number Output Column Name:",
       "description": "Name of the column where test counts will be stored. Contains numeric values or error messages.",
       "propertyOrder": 60
     },

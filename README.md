@@ -12,10 +12,10 @@ Komponenta načítá vstupní tabulku s parametry, volá Xray GraphQL API a vrac
 
 - **#xray_client_id** (povinný) - Xray Cloud Client ID
 - **#xray_client_secret** (povinný) - Xray Cloud Client Secret
-- **input_column_name** (povinný) - Název prvního vstupního sloupce s parametry
-- **output_column_name** (povinný) - Název prvního výstupního sloupce
-- **input_column_name_2** (povinný) - Název druhého vstupního sloupce s parametry
-- **output_column_name_2** (povinný) - Název druhého výstupního sloupce
+- **total_tests_source_column_input** (povinný) - Název prvního vstupního sloupce s parametry
+- **total_tests_number_column_output** (povinný) - Název prvního výstupního sloupce
+- **automated_tests_source_column_input** (povinný) - Název druhého vstupního sloupce s parametry
+- **automated_tests_number_column_output** (povinný) - Název druhého výstupního sloupce
 - **debug** (volitelný) - Debug logování (default: false)
 - **incremental** (volitelný) - Inkrementální načítání (default: false)
 
@@ -23,7 +23,7 @@ Komponenta načítá vstupní tabulku s parametry, volá Xray GraphQL API a vrac
 
 Vstupní tabulka musí obsahovat:
 
-**Sloupce s parametry** (podle `input_column_name` a `input_column_name_2`):
+**Sloupce s parametry** (podle `total_tests_source_column_input` a `automated_tests_source_column_input`):
 Každý sloupec obsahuje JSON array se 3 parametry: `[project_id, folder_path, jql_query]`
 
 **Sloupec AUTO_DATA_AUTOMATICALLY**:

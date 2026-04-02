@@ -96,10 +96,16 @@ class Component(ComponentBase):
             logging.info("--- Loaded Parameters ---")
             logging.info(f"Debug: {params.debug}")
             logging.info(f"Incremental: {params.incremental}")
-            logging.info(f"Input Column Name: {params.input_column_name}")
-            logging.info(f"Output Column Name: {params.output_column_name}")
-            logging.info(f"Input Column Name 2: {params.input_column_name_2}")
-            logging.info(f"Output Column Name 2: {params.output_column_name_2}")
+            logging.info(f"Input Column Name: {params.total_tests_source_column_input}")
+            logging.info(
+                f"Output Column Name: {params.total_tests_number_column_output}"
+            )
+            logging.info(
+                f"Input Column Name 2: {params.automated_tests_source_column_input}"
+            )
+            logging.info(
+                f"Output Column Name 2: {params.automated_tests_number_column_output}"
+            )
             logging.debug(
                 f"Xray Client ID (last 5 chars): ...{params.xray_client_id[-5:]}"
             )
@@ -161,39 +167,41 @@ class Component(ComponentBase):
             with open(input_csv_path, mode="r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
 
-                if params.input_column_name not in reader.fieldnames:
+                if params.total_tests_source_column_input not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
-                        f"input column: '{params.input_column_name}'. Available columns: "
+                        f"input column: '{params.total_tests_source_column_input}'. Available columns: "
                         f"{list(reader.fieldnames)}"
                     )
 
-                if params.input_column_name_2 not in reader.fieldnames:
+                if params.automated_tests_source_column_input not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
-                        f"input column: '{params.input_column_name_2}'. Available columns: "
+                        f"input column: '{params.automated_tests_source_column_input}'. Available columns: "
                         f"{list(reader.fieldnames)}"
                     )
 
                 logging.debug(
                     "Input CSV header read. "
-                    f"Required input column '{params.input_column_name}' found."
+                    f"Required input column '{params.total_tests_source_column_input}' found."
                 )
 
                 output_fieldnames = list(reader.fieldnames)
-                if params.output_column_name not in output_fieldnames:
-                    output_fieldnames.append(params.output_column_name)
+                if params.total_tests_number_column_output not in output_fieldnames:
+                    output_fieldnames.append(params.total_tests_number_column_output)
                 else:
                     logging.debug(
-                        f"Output column name '{params.output_column_name}' already "
+                        f"Output column name '{params.total_tests_number_column_output}' already "
                         "exists in input. It will be overwritten."
                     )
 
-                if params.output_column_name_2 not in output_fieldnames:
-                    output_fieldnames.append(params.output_column_name_2)
+                if params.automated_tests_number_column_output not in output_fieldnames:
+                    output_fieldnames.append(
+                        params.automated_tests_number_column_output
+                    )
                 else:
                     logging.debug(
-                        f"Output column name '{params.output_column_name_2}' already "
+                        f"Output column name '{params.automated_tests_number_column_output}' already "
                         "exists in input. It will be overwritten."
                     )
 
@@ -202,32 +210,40 @@ class Component(ComponentBase):
                     row_count += 1
                     logging.debug(f"Processing row {row_count}.")
 
-                    # Check AUTE_DATA_AUTOMATICALLY flag
+                    # Check AUTE_DATA_AUTOMATICALLY and IS_VALID flags
                     auto_data_flag = (
                         row.get("AUTE_DATA_AUTOMATICALLY", "").strip().upper()
                     )
-                    if auto_data_flag != "Y":
+                    is_valid_flag = (
+                        row.get("IS_VALID", "").strip().upper()
+                    )
+                    if auto_data_flag != "Y" or is_valid_flag != "Y":
                         logging.debug(
-                            f"Row {row_count}: AUTE_DATA_AUTOMATICALLY is '{auto_data_flag}', skipping row."
+                            f"Row {row_count}: AUTE_DATA_AUTOMATICALLY is '{auto_data_flag}', "
+                            f"IS_VALID is '{is_valid_flag}', skipping row."
                         )
                         processed_rows.append(row)
                         continue
 
                     # Process both column pairs
-                    row[params.output_column_name] = self._process_column_pair(
-                        row,
-                        params.input_column_name,
-                        xray_client,
-                        row_count,
-                        error_rows,
+                    row[params.total_tests_number_column_output] = (
+                        self._process_column_pair(
+                            row,
+                            params.total_tests_source_column_input,
+                            xray_client,
+                            row_count,
+                            error_rows,
+                        )
                     )
 
-                    row[params.output_column_name_2] = self._process_column_pair(
-                        row,
-                        params.input_column_name_2,
-                        xray_client,
-                        row_count,
-                        error_rows,
+                    row[params.automated_tests_number_column_output] = (
+                        self._process_column_pair(
+                            row,
+                            params.automated_tests_source_column_input,
+                            xray_client,
+                            row_count,
+                            error_rows,
+                        )
                     )
 
                     processed_rows.append(row)
