@@ -2,7 +2,7 @@ import csv
 import json
 import logging
 
-# Import necessary classes from keboola-component-base
+import requests
 from keboola.component.base import ComponentBase
 from keboola.component.dao import TableDefinition
 from keboola.component.exceptions import UserException
@@ -12,29 +12,49 @@ from xray_api import XrayApiClient
 
 
 class Component(ComponentBase):
-    """
-    Keboola Component logic.
-    Handles configuration loading, input reading, and main execution flow.
+    """Keboola extractor that queries Xray Cloud GraphQL API for test counts.
+
+    Reads input CSV rows, calls Xray API for each row where
+    AUTE_DATA_AUTOMATICALLY='Y' and IS_VALID='Y', writes test counts
+    into two output columns.
     """
 
     def __init__(self):
         super().__init__()
 
+    def _should_process_row(self, row, row_count):
+        """Return True if row has both AUTE_DATA_AUTOMATICALLY='Y' and IS_VALID='Y'."""
+        auto_flag = row.get("AUTE_DATA_AUTOMATICALLY", "").strip().upper()
+        valid_flag = row.get("IS_VALID", "").strip().upper()
+        if auto_flag != "Y" or valid_flag != "Y":
+            logging.debug(
+                f"Row {row_count}: skipping "
+                f"(AUTE_DATA_AUTOMATICALLY='{auto_flag}', IS_VALID='{valid_flag}')"
+            )
+            return False
+        return True
+
     def _process_column_pair(self, row, input_col, xray_client, row_num, error_rows):
-        """Process one input/output column pair for a row."""
+        """Parse JSON params from input_col and query Xray API for test count.
+
+        Returns test count (int) on success, None on error.
+        Errors are logged and appended to error_rows for summary.
+        """
         input_data = row.get(input_col, "").strip()
+        key_value = row.get("KEY", "N/A")
+        name_value = row.get("NAME", "N/A")
+        row_id = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}')"
 
         if not input_data:
-            key_value = row.get("KEY", "N/A")
-            name_value = row.get("NAME", "N/A")
-            error_msg = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}'): Input column "
-            error_msg += (
-                f"'{input_col}' is empty but AUTE_DATA_AUTOMATICALLY is set to 'Y'."
+            error_msg = (
+                f"{row_id}: Input column '{input_col}' is empty "
+                f"but AUTE_DATA_AUTOMATICALLY is set to 'Y'."
             )
             logging.warning(error_msg)
             error_rows.append(error_msg)
             return None
 
+        # Expected format: ["project_id", "folder_path", "jql_query"]
         try:
             params_array = json.loads(input_data)
             if not isinstance(params_array, list) or len(params_array) != 3:
@@ -49,15 +69,15 @@ class Component(ComponentBase):
             jql_query = jql_query.strip() if jql_query else None
 
             logging.debug(
-                f"Row {row_num}: Parsed parameters for '{input_col}' - "
+                f"Row {row_num}: Parsed '{input_col}' - "
                 f"Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
             )
 
         except (json.JSONDecodeError, ValueError) as parse_exc:
-            key_value = row.get("KEY", "N/A")
-            name_value = row.get("NAME", "N/A")
-            error_msg = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}'): Failed to parse "
-            error_msg += f"input data in '{input_col}' '{input_data}': {parse_exc}"
+            error_msg = (
+                f"{row_id}: Failed to parse input data "
+                f"in '{input_col}' '{input_data}': {parse_exc}"
+            )
             logging.warning(error_msg)
             error_rows.append(error_msg)
             return None
@@ -70,98 +90,56 @@ class Component(ComponentBase):
                 f"Row {row_num}: API success for '{input_col}' - {total_count} tests found"
             )
             return total_count
-        except Exception as api_exc:
-            logging.error(
+        except (requests.RequestException, ValueError):
+            logging.exception(
                 f"Row {row_num}: Error calling Xray API for '{input_col}' - Project ID "
-                f"'{project_id}', Folder Path '{folder_path}', JQL '{jql_query}': {api_exc}"
+                f"'{project_id}', Folder Path '{folder_path}', JQL '{jql_query}'"
             )
             return None
 
     def run(self):
-        """
-        Main execution method.
-        """
-        logging.info("Component starting.")
-
-        # Load and validate configuration parameters
+        """Main execution: load config -> auth -> read CSV -> call API -> write output."""
+        # Load and validate configuration
         try:
-            logging.info("Loading and validating configuration parameters...")
             params = Configuration(**self.configuration.parameters)
-            logging.info("Configuration parameters loaded and validated.")
-
-            if params.debug:
-                logging.getLogger().setLevel(logging.DEBUG)
-                logging.debug("Debug mode enabled.")
-
-            logging.info("--- Loaded Parameters ---")
-            logging.info(f"Debug: {params.debug}")
-            logging.info(f"Incremental: {params.incremental}")
-            logging.info(f"Input Column Name: {params.total_tests_source_column_input}")
-            logging.info(
-                f"Output Column Name: {params.total_tests_number_column_output}"
-            )
-            logging.info(
-                f"Input Column Name 2: {params.automated_tests_source_column_input}"
-            )
-            logging.info(
-                f"Output Column Name 2: {params.automated_tests_number_column_output}"
-            )
-            logging.debug(
-                f"Xray Client ID (last 5 chars): ...{params.xray_client_id[-5:]}"
-            )
-            logging.debug(
-                f"Xray Client Secret (last 5 chars): ...{params.xray_client_secret[-5:]}"
-            )
-            logging.info("-------------------------")
-
-        except UserException as e:
-            logging.error(f"Configuration error: {e}")
+        except UserException:
             raise
-        except Exception as e:
-            logging.error(
-                f"An unexpected error occurred during configuration loading: {e}"
-            )
-            raise UserException(f"Unexpected error during configuration: {e}")
 
-        #
+        if params.debug:
+            logging.getLogger().setLevel(logging.DEBUG)
+            logging.debug("Debug mode enabled.")
+
+        logging.info(
+            f"Config: input_cols=[{params.total_tests_source_column_input}, "
+            f"{params.automated_tests_source_column_input}], "
+            f"output_cols=[{params.total_tests_number_column_output}, "
+            f"{params.automated_tests_number_column_output}], "
+            f"debug={params.debug}, incremental={params.incremental}"
+        )
+
         # Initialize Xray API client
         try:
-            logging.info("Initializing Xray API client and authenticating...")
             xray_client = XrayApiClient(
-                client_id=params.xray_client_id, client_secret=params.xray_client_secret
+                client_id=params.xray_client_id,
+                client_secret=params.xray_client_secret
             )
-            logging.info("Xray API client initialized and authenticated.")
-        except Exception as e:
-            logging.error(f"Failed to initialize or authenticate Xray API client: {e}")
+            logging.info("Xray API client authenticated.")
+        except requests.RequestException as e:
             raise UserException(f"API Authentication/Initialization Error: {e}")
 
-        #
-        # ####### Get Input Table Definitions #######
-        logging.info("Getting input table definitions...")
+        # Get input table
         input_tables: list[TableDefinition] = self.get_input_tables_definitions()
-
         if not input_tables:
             raise UserException(
                 "No input tables found. Please map exactly one input table."
             )
-
-        if len(input_tables) > 1:
-            logging.debug(
-                f"More than one input table mapped ({len(input_tables)}). "
-                "Processing the first one."
-            )
-
         input_table_def = input_tables[0]
-        logging.debug(
-            f"Processing input table: {input_table_def.name} "
-            f"(file: {input_table_def.full_path})"
-        )
 
-        # ####### Read data, call API, and prepare output #######
+        # Read data, call API, and prepare output
         input_csv_path = input_table_def.full_path
         processed_rows = []
         row_count = 0
-        error_rows = []  # Collect problematic rows for summary
+        error_rows = []
 
         try:
             with open(input_csv_path, mode="r", encoding="utf-8") as csvfile:
@@ -170,62 +148,34 @@ class Component(ComponentBase):
                 if params.total_tests_source_column_input not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
-                        f"input column: '{params.total_tests_source_column_input}'. Available columns: "
-                        f"{list(reader.fieldnames)}"
+                        f"input column: '{params.total_tests_source_column_input}'. "
+                        f"Available columns: {list(reader.fieldnames)}"
                     )
 
                 if params.automated_tests_source_column_input not in reader.fieldnames:
                     raise UserException(
                         f"Input table '{input_table_def.name}' is missing the required "
-                        f"input column: '{params.automated_tests_source_column_input}'. Available columns: "
-                        f"{list(reader.fieldnames)}"
+                        f"input column: '{params.automated_tests_source_column_input}'. "
+                        f"Available columns: {list(reader.fieldnames)}"
                     )
 
-                logging.debug(
-                    "Input CSV header read. "
-                    f"Required input column '{params.total_tests_source_column_input}' found."
-                )
-
+                # Append output columns if not already present in input
                 output_fieldnames = list(reader.fieldnames)
-                if params.total_tests_number_column_output not in output_fieldnames:
-                    output_fieldnames.append(params.total_tests_number_column_output)
-                else:
-                    logging.debug(
-                        f"Output column name '{params.total_tests_number_column_output}' already "
-                        "exists in input. It will be overwritten."
-                    )
+                for col in [
+                    params.total_tests_number_column_output,
+                    params.automated_tests_number_column_output,
+                ]:
+                    if col not in output_fieldnames:
+                        output_fieldnames.append(col)
 
-                if params.automated_tests_number_column_output not in output_fieldnames:
-                    output_fieldnames.append(
-                        params.automated_tests_number_column_output
-                    )
-                else:
-                    logging.debug(
-                        f"Output column name '{params.automated_tests_number_column_output}' already "
-                        "exists in input. It will be overwritten."
-                    )
-
-                logging.debug("Processing rows and calling Xray API...")
+                # Process each row: skip invalid, query API for valid ones
                 for row in reader:
                     row_count += 1
-                    logging.debug(f"Processing row {row_count}.")
 
-                    # Check AUTE_DATA_AUTOMATICALLY and IS_VALID flags
-                    auto_data_flag = (
-                        row.get("AUTE_DATA_AUTOMATICALLY", "").strip().upper()
-                    )
-                    is_valid_flag = (
-                        row.get("IS_VALID", "").strip().upper()
-                    )
-                    if auto_data_flag != "Y" or is_valid_flag != "Y":
-                        logging.debug(
-                            f"Row {row_count}: AUTE_DATA_AUTOMATICALLY is '{auto_data_flag}', "
-                            f"IS_VALID is '{is_valid_flag}', skipping row."
-                        )
+                    if not self._should_process_row(row, row_count):
                         processed_rows.append(row)
                         continue
 
-                    # Process both column pairs
                     row[params.total_tests_number_column_output] = (
                         self._process_column_pair(
                             row,
@@ -253,107 +203,56 @@ class Component(ComponentBase):
                     f"Collected {len(processed_rows)} rows for output."
                 )
 
-                # Summary warning if there were any errors
                 if error_rows:
                     logging.warning(
-                        f"PROCESSING SUMMARY: Found {len(error_rows)} problematic rows during processing:\n"
+                        f"PROCESSING SUMMARY: {len(error_rows)} problematic rows:\n"
                         + "\n".join([f"  - {error}" for error in error_rows])
                     )
 
         except FileNotFoundError:
-            logging.error(f"Input CSV file not found: {input_csv_path}")
             raise UserException(
                 "Input file not found. Check Input Mapping and source table."
             )
-        except Exception as e:
-            logging.error(f"Error reading or processing input CSV: {e}")
-            raise UserException(f"Error processing input data or calling API: {e}")
 
-        # ####### Write Output Table #######
-        # Get output table definition using create_out_table_definition
-        logging.debug("Creating output table definition...")
-
+        # Write output table
         output_tables_config = self.configuration.tables_output_mapping
         if not output_tables_config:
             raise UserException(
                 "No output tables defined. Please map at least one output table."
             )
-        if len(output_tables_config) > 1:
-            logging.debug(
-                f"More than one output table defined ({len(output_tables_config)}). "
-                "Using the first one for output."
-            )
 
-        first_output_table_config = output_tables_config[0]
+        first_output_config = output_tables_config[0]
+
+        output_table_def = self.create_out_table_definition(
+            name=first_output_config.source,
+            schema=output_fieldnames,
+            destination=first_output_config.destination,
+            primary_key=getattr(first_output_config, "primary_key", None),
+            has_header=True,
+        )
+
+        if params.incremental:
+            if not output_table_def.primary_key:
+                raise UserException(
+                    "Incremental loading requested but no primary key "
+                    "is defined in the output table mapping."
+                )
+            output_table_def.incremental = True
 
         try:
-            output_table_source_name = first_output_table_config.source
-            output_table_destination_name = first_output_table_config.destination
-            primary_key_config = getattr(first_output_table_config, "primary_key", None)
-
-        except AttributeError as e:
-            raise UserException(
-                f"Failed to access output mapping attributes (e.g., .destination, .primary_key): {e}. "
-                "Ensure the output mapping is correctly defined and the library version is compatible."
-            )
-
-        try:
-            # Create the TableDefinition object
-            output_table_def = self.create_out_table_definition(
-                name=output_table_source_name,
-                schema=output_fieldnames,
-                destination=output_table_destination_name,
-                primary_key=primary_key_config,
-                has_header=True,
-            )
-
-            if params.incremental:
-                if not output_table_def.primary_key:
-                    raise UserException(
-                        "Incremental loading requested but no primary key "
-                        "is defined in the output table mapping."
-                    )
-                output_table_def.incremental = True
-                logging.debug("Incremental loading enabled for output manifest.")
-
-            logging.debug(
-                f"Writing output to table: {output_table_def.name} "
-                f"(file: {output_table_def.full_path})"
-            )
-
-            # 2. Write the processed data to the output CSV file
-            output_csv_path = output_table_def.full_path
-            logging.debug(
-                f"Writing {len(processed_rows)} rows to output CSV file: "
-                f"{output_csv_path}"
-            )
-
             with open(
-                output_csv_path, mode="wt", encoding="utf-8", newline=""
+                output_table_def.full_path, mode="w", encoding="utf-8", newline=""
             ) as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=output_fieldnames)
-
                 writer.writeheader()
                 writer.writerows(processed_rows)
 
-            logging.debug("Output CSV file written successfully.")
-
-            # 3. Write the manifest file for the output table
-            logging.debug(
-                "Writing manifest file for output table: "
-                f"{output_table_def.full_path}.manifest"
-            )
             self.write_manifest(output_table_def)
-            logging.debug("Manifest file written successfully.")
-
-        except Exception as e:
-            logging.error(
-                f"Error creating output table definition, "
-                f"writing CSV or manifest: {e}"
+            logging.info(
+                f"Output written: {len(processed_rows)} rows to {output_table_def.name}"
             )
+        except OSError as e:
             raise UserException(f"Error writing output data: {e}")
-
-        logging.info("Component finished.")
 
 
 if __name__ == "__main__":
@@ -364,6 +263,6 @@ if __name__ == "__main__":
     except UserException as exc:
         logging.error(f"User Error: {exc}")
         exit(1)
-    except Exception as e:
-        logging.exception(f"An unexpected application error occurred: {e}")
+    except Exception:
+        logging.exception("An unexpected application error occurred")
         exit(2)

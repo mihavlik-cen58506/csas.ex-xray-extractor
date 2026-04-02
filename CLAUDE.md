@@ -46,7 +46,7 @@ This is a standard **Keboola Python component** using `keboola.component` SDK:
 
 ## Key Conventions
 
-- **Linting**: flake8 with max line length 120 (see `flake8.cfg`). Tests directory is excluded from linting.
+- **Linting**: flake8 with max line length 120 (see `flake8.cfg`). Tests directory is excluded from linting. **No line may exceed 120 characters** — the CI/CD build will fail otherwise.
 - **Python 3.11** (Docker base image).
 - **Testing**: `unittest` framework with `mock` and `freezegun`. Tests live in `tests/test_component.py`. Test discovery via `python -m unittest discover`.
 - Input rows are processed only when `AUTE_DATA_AUTOMATICALLY` column equals `"Y"` (note: this is the actual column name, not a typo — do not "fix" it).
