@@ -90,11 +90,14 @@ class Component(ComponentBase):
                 f"Row {row_num}: API success for '{input_col}' - {total_count} tests found"
             )
             return total_count
-        except (requests.RequestException, ValueError):
-            logging.exception(
-                f"Row {row_num}: Error calling Xray API for '{input_col}' - Project ID "
-                f"'{project_id}', Folder Path '{folder_path}', JQL '{jql_query}'"
+        except Exception as api_exc:
+            error_msg = (
+                f"{row_id}: Xray API error for '{input_col}' "
+                f"(Project '{project_id}', Folder '{folder_path}', JQL '{jql_query}'): "
+                f"{api_exc}"
             )
+            logging.warning(error_msg)
+            error_rows.append(error_msg)
             return None
 
     def run(self):
@@ -263,6 +266,6 @@ if __name__ == "__main__":
     except UserException as exc:
         logging.error(f"User Error: {exc}")
         exit(1)
-    except Exception:
-        logging.exception("An unexpected application error occurred")
+    except Exception as e:
+        logging.exception(f"An unexpected application error occurred: {e}")
         exit(2)
