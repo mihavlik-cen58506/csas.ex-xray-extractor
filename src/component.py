@@ -22,13 +22,20 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
+    def _row_id(row, row_num):
+        """Human-readable identifier used in all log messages for a given row."""
+        key_value = row.get("KEY", "N/A")
+        name_value = row.get("NAME", "N/A")
+        return f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}')"
+
     def _should_process_row(self, row, row_count):
         """Return True if row has both AUTE_DATA_AUTOMATICALLY='Y' and IS_VALID='Y'."""
         auto_flag = row.get("AUTE_DATA_AUTOMATICALLY", "").strip().upper()
         valid_flag = row.get("IS_VALID", "").strip().upper()
         if auto_flag != "Y" or valid_flag != "Y":
             logging.debug(
-                f"Row {row_count}: skipping "
+                f"{self._row_id(row, row_count)}: skipping "
                 f"(AUTE_DATA_AUTOMATICALLY='{auto_flag}', IS_VALID='{valid_flag}')"
             )
             return False
@@ -41,9 +48,7 @@ class Component(ComponentBase):
         Errors are logged and appended to error_rows for summary.
         """
         input_data = row.get(input_col, "").strip()
-        key_value = row.get("KEY", "N/A")
-        name_value = row.get("NAME", "N/A")
-        row_id = f"Row {row_num} (KEY: '{key_value}', NAME: '{name_value}')"
+        row_id = self._row_id(row, row_num)
 
         if not input_data:
             error_msg = (
@@ -69,7 +74,7 @@ class Component(ComponentBase):
             jql_query = jql_query.strip() if jql_query else None
 
             logging.debug(
-                f"Row {row_num}: Parsed '{input_col}' - "
+                f"{row_id}: Parsed '{input_col}' - "
                 f"Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
             )
 
@@ -84,10 +89,11 @@ class Component(ComponentBase):
 
         try:
             total_count = xray_client.query_tests_by_dynamic_params(
-                project_id=project_id, folder_path=folder_path, jql_query=jql_query
+                project_id=project_id, folder_path=folder_path, jql_query=jql_query,
+                row_id=row_id,
             )
             logging.debug(
-                f"Row {row_num}: API success for '{input_col}' - {total_count} tests found"
+                f"{row_id}: API success for '{input_col}' - {total_count} tests found"
             )
             return total_count
         except Exception as api_exc:

@@ -110,7 +110,8 @@ class XrayApiClient:
         logging.info("Xray Cloud API authentication successful.")
 
     def query_tests_by_dynamic_params(
-        self, project_id: str, folder_path: str = None, jql_query: str = None
+        self, project_id: str, folder_path: str = None, jql_query: str = None,
+        row_id: str = ""
     ) -> int:
         """
         Executes a GraphQL query to get tests based on dynamic parameters.
@@ -119,6 +120,9 @@ class XrayApiClient:
             project_id: The Xray/Jira Project ID (required).
             folder_path: The path to the folder in Xray (optional).
             jql_query: The JQL query string (optional).
+            row_id: Human-readable identifier of the source row (e.g.
+                "Row 12 (KEY: 'ABC', NAME: 'Foo')"). Prepended to log
+                messages so errors can be traced back to input data.
 
         Returns:
             The total count of tests matching the criteria.
@@ -132,8 +136,11 @@ class XrayApiClient:
         if not self._bearer_token:
             self._authenticate()
 
+        log_prefix = f"{row_id}: " if row_id else ""
+
         logging.debug(
-            f"Executing GraphQL query - Project: '{project_id}', Folder: '{folder_path}', JQL: '{jql_query}'"
+            f"{log_prefix}Executing GraphQL query - Project: '{project_id}', "
+            f"Folder: '{folder_path}', JQL: '{jql_query}'"
         )
 
         graphql_query = """
@@ -185,7 +192,7 @@ class XrayApiClient:
 
             if api_response.get("errors"):
                 logging.error(
-                    f"GraphQL query returned errors: {api_response['errors']}"
+                    f"{log_prefix}GraphQL query returned errors: {api_response['errors']}"
                 )
                 raise Exception(f"GraphQL query errors: {api_response['errors']}")
 
@@ -197,15 +204,16 @@ class XrayApiClient:
                 return int(total) if total is not None else 0
             except (ValueError, TypeError):
                 logging.warning(
-                    f"Invalid total value from GraphQL API: {total}, returning 0"
+                    f"{log_prefix}Invalid total value from GraphQL API: {total}, returning 0"
                 )
                 return 0
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Xray GraphQL API request failed: {e}")
+            logging.error(f"{log_prefix}Xray GraphQL API request failed: {e}")
             raise
         except ValueError:
             logging.error(
-                f"Failed to parse JSON response from Xray API. Response text: {response.text[:500]}..."
+                f"{log_prefix}Failed to parse JSON response from Xray API. "
+                f"Response text: {response.text[:500]}..."
             )
             raise
